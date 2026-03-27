@@ -2,520 +2,1169 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-панель | AR Меню</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://*.gstatic.com https://cdn.jsdelivr.net https://unpkg.com blob: data:;">
+    <title>AR Меню</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+    <!-- Google Model Viewer для AR -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
     <style>
-        .admin-header {
-            text-align: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: white;
-            border-radius: 0 0 20px 20px;
-        }
-        .admin-header a {
-            color: #f39c12;
-            text-decoration: none;
-        }
-        .admin-form {
-            max-width: 500px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #1e1e2e;
-            border-radius: 16px;
-            border: 1px solid #333;
-        }
-        .form-group {
-            margin-bottom: 16px;
-        }
-        .form-group label {
-            display: block;
-            color: #ccc;
-            margin-bottom: 6px;
-            font-size: 14px;
-        }
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            border-radius: 10px;
-            background: #2a2a3a;
-            color: white;
-            font-size: 15px;
-            box-sizing: border-box;
-        }
-        .form-group textarea {
-            height: 80px;
-            resize: vertical;
+        /* ========== RESET & BASE ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0a;
+            --card: #141414;
+            --card-hover: #1a1a1a;
+            --accent: #ff6b35;
+            --accent-light: #ff8c5a;
+            --accent-dark: #e55a2b;
+            --text: #ffffff;
+            --text-muted: #888888;
+            --text-dim: #555555;
+            --success: #4caf50;
+            --border: #222222;
+            --overlay: rgba(0,0,0,0.85);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
 
-        /* Upload Area */
-        .upload-area {
-            border: 2px dashed #555;
-            border-radius: 12px;
-            padding: 30px;
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+        }
+
+        .header-content {
+            max-width: 600px;
+            margin: 0 auto;
             text-align: center;
+        }
+
+        .restaurant-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), #ffb347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .restaurant-tagline {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ========== КАТЕГОРИИ (табы) ========== */
+        .categories-bar {
+            position: sticky;
+            top: 72px;
+            z-index: 99;
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(15px);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .categories-bar::-webkit-scrollbar { display: none; }
+
+        .categories-inner {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .cat-btn {
+            flex-shrink: 0;
+            padding: 8px 18px;
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            background: #2a2a3a;
+            white-space: nowrap;
         }
-        .upload-area:hover,
-        .upload-area.drag-over {
-            border-color: #f39c12;
-            background: #2a2a3a88;
-        }
-        .upload-placeholder {
-            color: #888;
-        }
-        .upload-placeholder .upload-icon {
-            font-size: 40px;
-            margin-bottom: 8px;
-        }
-        .upload-preview {
-            display: none;
-            align-items: center;
-            gap: 12px;
-            justify-content: center;
-        }
-        .upload-preview img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 10px;
-        }
-        .remove-photo {
-            background: #e74c3c;
-            border: none;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
+        .cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .cat-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
         }
 
-        /* Progress */
-        .upload-progress {
-            display: none;
+        /* ========== КОНТЕЙНЕР МЕНЮ ========== */
+        .menu-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .category-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 28px 0 14px 0;
+            color: var(--text);
+            display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 10px;
         }
-        .progress-bar {
+        .category-title::after {
+            content: '';
             flex: 1;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ========== КАРТОЧКА БЛЮДА ========== */
+        .dish-card {
+            display: flex;
+            gap: 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
             overflow: hidden;
         }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #f39c12, #e74c3c);
-            width: 0%;
-            transition: width 0.3s;
-            border-radius: 4px;
+        .dish-card:hover {
+            background: var(--card-hover);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255,107,53,0.1);
         }
-        .progress-text {
-            color: #f39c12;
-            font-size: 13px;
-            min-width: 40px;
+        .dish-card:active { transform: translateY(0); }
+
+        .dish-img {
+            width: 90px;
+            height: 90px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            flex-shrink: 0;
+            background: #1a1a1a;
         }
 
-        /* Button */
-        .add-btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #f39c12, #e74c3c);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
-        }
-        .add-btn:hover {
-            transform: scale(1.02);
-        }
-        .add-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .dish-info { flex: 1; min-width: 0; }
+
+        .dish-name {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            line-height: 1.3;
         }
 
-        /* Dishes List */
-        .dishes-section {
-            max-width: 500px;
-            margin: 20px auto;
-            padding: 0 20px 40px;
+        .dish-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            line-clamp: 2;
+            overflow: hidden;
         }
-        .dishes-section h2 {
-            color: white;
-            text-align: center;
-        }
-        .admin-item {
+
+        .dish-bottom {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1e1e2e;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
+            margin-top: 8px;
         }
-        .admin-item-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+
+        .dish-price {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent);
         }
-        .admin-thumb {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 8px;
+
+        .dish-weight {
+            font-size: 0.75rem;
+            color: var(--text-dim);
         }
-        .admin-thumb-empty {
-            width: 50px;
-            height: 50px;
-            background: #2a2a3a;
-            border-radius: 8px;
+
+        .ar-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ========== МОДАЛКА БЛЮДА ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--overlay);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-end;
+            animation: fadeIn 0.2s;
+        }
+        .modal-overlay.show { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .modal-content {
+            background: var(--card);
+            width: 100%;
+            max-width: 600px;
+            max-height: 92vh;
+            border-radius: 24px 24px 0 0;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-img-wrap {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background: #111;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
         }
-        .admin-item h4 {
-            color: white;
-            margin: 0;
-            font-size: 15px;
+        .modal-img-wrap.no-img::after {
+            content: '🍽️';
+            font-size: 4rem;
         }
-        .admin-item span {
-            color: #f39c12;
-            font-size: 14px;
+        .modal-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-        .delete-btn {
-            background: #e74c3c33;
-            border: 1px solid #e74c3c;
-            color: #e74c3c;
-            padding: 8px 12px;
-            border-radius: 8px;
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            font-size: 1.2rem;
             cursor: pointer;
-            font-size: 16px;
-            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            z-index: 10;
         }
-        .delete-btn:hover {
-            background: #e74c3c;
-            color: white;
+
+        .modal-body { padding: 24px 20px 32px; }
+
+        .modal-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .modal-category-tag {
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .modal-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+            margin-bottom: 20px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            line-clamp: 3;
+            overflow: hidden;
+        }
+
+        .modal-meta {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .modal-meta-item {
+            text-align: center;
+        }
+        .modal-meta-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .modal-meta-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-ar {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        .btn-ar:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(255,107,53,0.3); }
+        .btn-ar:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* ========== AR VIEWER ========== */
+        .ar-viewer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        .ar-viewer-overlay.show { display: flex; }
+
+        .ar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .ar-title { font-size: 1rem; font-weight: 700; }
+        .ar-close-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        model-viewer {
+            flex: 1;
+            width: 100%;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 100%);
+            --poster-color: transparent;
+        }
+
+        .ar-hint {
+            padding: 12px 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.8);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* ========== КОРЗИНА ========== */
+        .cart-fab {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 500;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: #fff;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(255,107,53,0.4);
+            transition: all 0.3s;
+        }
+        .cart-fab:hover { transform: scale(1.1); }
+        .cart-fab.visible { display: flex; align-items: center; justify-content: center; }
+
+        .cart-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #e53935;
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Корзина - панель */
+        .cart-panel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1500;
+            background: var(--overlay);
+        }
+        .cart-panel.show { display: flex; justify-content: center; align-items: flex-end; }
+
+        .cart-body {
+            background: var(--card);
+            width: 100%;
+            max-width: 600px;
+            max-height: 80vh;
+            border-radius: 24px 24px 0 0;
+            animation: slideUp 0.3s ease;
+            overflow-y: auto;
+            padding: 24px 20px 32px;
+        }
+
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .cart-title { font-size: 1.3rem; font-weight: 800; }
+        .cart-clear {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .cart-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .cart-item-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+        .cart-item-info { flex: 1; }
+        .cart-item-name { font-size: 0.9rem; font-weight: 600; }
+        .cart-item-price { font-size: 0.85rem; color: var(--accent); font-weight: 700; }
+
+        .cart-item-qty {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .qty-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .qty-value { font-weight: 700; min-width: 20px; text-align: center; }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 2px solid var(--border);
+        }
+        .cart-total-label { font-size: 1rem; color: var(--text-muted); }
+        .cart-total-value { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+
+        .btn-order {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--success);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.3s;
+        }
+        .btn-order:hover { opacity: 0.9; transform: scale(1.01); }
+
+        /* ========== ПУСТО / ЗАГРУЗКА ========== */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-dim);
+        }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+
+        /* ========== TOAST ========== */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--success);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* ========== NO-IMG PLACEHOLDER ========== */
+        .no-img {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a1a, #222);
+            font-size: 2rem;
         }
     </style>
 </head>
 <body>
 
-<div class="admin-header">
-    <h1>⚙️ Админ-панель</h1>
-    <p>Управление блюдами | <a href="index.html">← Перейти в меню</a></p>
-</div>
-
-<!-- Форма добавления блюда -->
-<div class="admin-form">
-    <h2>➕ Добавить блюдо</h2>
-
-    <div class="form-group">
-        <label>Название блюда *</label>
-        <input type="text" id="dish-name" placeholder="Например: Стейк Рибай">
-    </div>
-
-    <div class="form-group">
-        <label>Описание</label>
-        <textarea id="dish-desc" placeholder="Сочный стейк из мраморной говядины..."></textarea>
-    </div>
-
-    <div class="form-group">
-        <label>Цена (₸) *</label>
-        <input type="number" id="dish-price" placeholder="4500">
-    </div>
-
-    <div class="form-group">
-        <label>Категория</label>
-        <select id="dish-category">
-            <option value="main">🥩 Основные блюда</option>
-            <option value="soup">🍲 Супы</option>
-            <option value="salad">🥗 Салаты</option>
-            <option value="dessert">🍰 Десерты</option>
-            <option value="drink">🥤 Напитки</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>Фото блюда</label>
-        <input type="file" id="dish-photo" accept="image/*" style="display:none">
-        <div class="upload-area" id="upload-area">
-            <div class="upload-placeholder" id="upload-placeholder">
-                <div class="upload-icon">📸</div>
-                <p>Нажмите или перетащите фото</p>
-                <small>JPG, PNG, WebP • до 5 МБ</small>
-            </div>
-            <div class="upload-preview" id="upload-preview">
-                <img id="preview-img" src="" alt="Preview">
-                <div>
-                    <p style="color:#4CAF50; margin:0;">✅ Фото выбрано</p>
-                    <button class="remove-photo" id="remove-photo">✕ Убрать</button>
-                </div>
-            </div>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-content">
+            <div class="restaurant-name" id="restaurantName">AR Меню</div>
+            <div class="restaurant-tagline" id="restaurantTagline">Загрузка...</div>
         </div>
-        <div class="upload-progress" id="upload-progress">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill"></div>
+    </header>
+
+    <!-- КАТЕГОРИИ -->
+    <nav class="categories-bar" id="categoriesBar">
+        <div class="categories-inner" id="categoriesInner"></div>
+    </nav>
+
+    <!-- МЕНЮ -->
+    <main class="menu-container" id="menuContainer">
+        <div class="loading" id="loadingState">
+            <div class="loading-spinner"></div>
+            <p>Загружаем меню...</p>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        Сделано с 🧡 &mdash; <a href="#" id="footerLink">AR Menu</a><br>
+        <span style="margin-top: 4px; display: inline-block;">Нажмите на блюдо для подробностей</span>
+    </footer>
+
+    <!-- FAB КОРЗИНА -->
+    <button class="cart-fab" id="cartFab" onclick="openCart()">
+        🛒
+        <span class="cart-count" id="cartCount">0</span>
+    </button>
+
+    <!-- МОДАЛКА БЛЮДА -->
+    <div class="modal-overlay" id="dishModal">
+        <div class="modal-content">
+            <div class="modal-img-wrap">
+                <img id="modalImg" src="" alt="">
+                <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
-            <span class="progress-text" id="progress-text">0%</span>
+            <div class="modal-body">
+                <div class="modal-category-tag" id="modalCategory"></div>
+                <div class="modal-name" id="modalName"></div>
+                <div class="modal-desc" id="modalDesc"></div>
+                <div class="modal-meta" id="modalMeta"></div>
+                <button class="btn-ar" id="modalArBtn" onclick="openAR()">
+                    📱 Смотреть в AR
+                </button>
+                <button class="btn-ar" style="background: var(--success);" onclick="addToCartFromModal()">
+                    🛒 Добавить в корзину
+                </button>
+            </div>
         </div>
     </div>
 
-    <div class="form-group">
-        <label>Ссылка на 3D модель (необязательно)</label>
-        <input type="text" id="dish-model" placeholder="https://sketchfab.com/models/...">
+    <!-- AR VIEWER -->
+    <div class="ar-viewer-overlay" id="arViewer">
+        <div class="ar-header">
+            <span class="ar-title" id="arTitle"></span>
+            <button class="ar-close-btn" onclick="closeAR()">✕</button>
+        </div>
+        <model-viewer
+            id="arModelViewer"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            camera-controls
+            touch-action="pan-y"
+            auto-rotate
+            shadow-intensity="1"
+            environment-image="neutral"
+            exposure="1"
+            interaction-prompt="auto"
+        ></model-viewer>
+        <div class="ar-hint">
+            👆 Вращайте 3D модель пальцем &bull; Нажмите кнопку AR внизу для размещения на столе
+        </div>
     </div>
 
-    <button class="add-btn" id="add-dish">🍽️ Добавить блюдо</button>
-</div>
-
-<!-- Список блюд -->
-<div class="dishes-section">
-    <h2>📋 Текущее меню</h2>
-    <div id="dishes-list">
-        <p style="text-align:center; color:#888;">Загрузка...</p>
+    <!-- КОРЗИНА -->
+    <div class="cart-panel" id="cartPanel">
+        <div class="cart-body">
+            <div class="cart-header">
+                <span class="cart-title">🛒 Ваш заказ</span>
+                <button class="cart-clear" onclick="clearCart()">Очистить</button>
+            </div>
+            <div id="cartItems"></div>
+            <div class="cart-total">
+                <span class="cart-total-label">Итого:</span>
+                <span class="cart-total-value" id="cartTotal">0 ₸</span>
+            </div>
+            <button class="btn-order" onclick="submitOrder()">✅ Оформить заказ</button>
+            <button class="btn-ar" style="background:transparent; border: 1px solid var(--border); margin-top: 8px;" onclick="closeCart()">Продолжить выбор</button>
+        </div>
     </div>
-</div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
 
 <script>
-    // Firebase конфиг
-    const firebaseConfig = {
-        apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhjCTh0gekSgcs",
-        authDomain: "ar-menu-resto.firebaseapp.com",
-        databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "ar-menu-resto",
-        storageBucket: "ar-menu-resto.firebasestorage.app",
-        messagingSenderId: "191825847434",
-        appId: "1:191825847434:web:3ac9c25c7108e363c73973"
-    };
+// ============================================================
+//  FIREBASE CONFIG — подставь свои данные
+// ============================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhiCTh0gekSgcs",
+    authDomain: "ar-menu-resto.firebaseapp.com",
+    databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ar-menu-resto",
+    storageBucket: "ar-menu-resto.firebasestorage.app",
+    messagingSenderId: "191825847434",
+    appId: "1:191825847434:web:3ac9c25c7108e363c73973",
+    measurementId: "G-RFVSR4EPWP"
+};
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-    // ⚡ ImgBB API Key
-    const IMGBB_API_KEY = 'ce01505f7607ce0c0bc2b13da86447cb';
+// ============================================================
+//  STATE
+// ============================================================
+let allDishes = [];
+let categories = [];
+let activeCategory = 'all';
+let currentDish = null;
+let cart = JSON.parse(localStorage.getItem('ar_menu_cart') || '[]');
+let restaurantInfo = { name: 'AR Меню', tagline: 'Ресторан', currency: '₸' };
 
-    // Элементы
-    const dishName = document.getElementById('dish-name');
-    const dishDesc = document.getElementById('dish-desc');
-    const dishPrice = document.getElementById('dish-price');
-    const dishCategory = document.getElementById('dish-category');
-    const dishPhoto = document.getElementById('dish-photo');
-    const dishModel = document.getElementById('dish-model');
-    const addBtn = document.getElementById('add-dish');
-    const dishesList = document.getElementById('dishes-list');
-    const uploadArea = document.getElementById('upload-area');
-    const uploadPlaceholder = document.getElementById('upload-placeholder');
-    const uploadPreview = document.getElementById('upload-preview');
-    const previewImg = document.getElementById('preview-img');
-    const removePhoto = document.getElementById('remove-photo');
-    const uploadProgress = document.getElementById('upload-progress');
-    const progressFill = document.getElementById('progress-fill');
-    const progressText = document.getElementById('progress-text');
+// ============================================================
+//  INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    loadRestaurantInfo();
+    loadMenu();
+    updateCartUI();
+});
 
-    let selectedFile = null;
-
-    // === ЗАГРУЗКА ФОТО ===
-    uploadArea.addEventListener('click', (e) => {
-        if (e.target.id !== 'remove-photo') {
-            dishPhoto.click();
+// Загрузка инфо ресторана
+function loadRestaurantInfo() {
+    db.ref('settings').on('value', snap => {
+        const data = snap.val();
+        if (data) {
+            restaurantInfo = { ...restaurantInfo, ...data };
+            document.getElementById('restaurantName').textContent = data.name || 'AR Меню';
+            document.getElementById('restaurantTagline').textContent = data.tagline || '';
+            document.title = data.name || 'AR Меню';
         }
+    }, err => {
+        console.error('Firebase settings error:', err);
     });
+}
 
-    // Drag & Drop
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('drag-over');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('drag-over');
-    });
-
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            handleFile(file);
-        } else {
-            alert('⚠️ Загрузите изображение (JPG, PNG, WebP)');
-        }
-    });
-
-    dishPhoto.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            handleFile(e.target.files[0]);
-        }
-    });
-
-    function handleFile(file) {
-        if (file.size > 5 * 1024 * 1024) {
-            alert('⚠️ Файл слишком большой! Максимум 5 МБ');
-            return;
-        }
-        selectedFile = file;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            previewImg.src = e.target.result;
-            uploadPlaceholder.style.display = 'none';
-            uploadPreview.style.display = 'flex';
-        };
-        reader.readAsDataURL(file);
-    }
-
-    removePhoto.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectedFile = null;
-        dishPhoto.value = '';
-        previewImg.src = '';
-        uploadPreview.style.display = 'none';
-        uploadPlaceholder.style.display = 'flex';
-    });
-
-    // Загрузка на ImgBB
-    async function uploadToImgBB(file) {
-        uploadProgress.style.display = 'flex';
-        progressFill.style.width = '30%';
-        progressText.textContent = '30%';
-
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('key', IMGBB_API_KEY);
-
-        progressFill.style.width = '60%';
-        progressText.textContent = '60%';
-
-        try {
-            const response = await fetch('https://api.imgbb.com/1/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            progressFill.style.width = '100%';
-            progressText.textContent = '100%';
-
-            if (data.success) {
-                setTimeout(() => {
-                    uploadProgress.style.display = 'none';
-                    progressFill.style.width = '0%';
-                }, 500);
-                return data.data.display_url;
-            } else {
-                throw new Error('Ошибка загрузки изображения');
-            }
-        } catch (error) {
-            uploadProgress.style.display = 'none';
-            progressFill.style.width = '0%';
-            throw error;
-        }
-    }
-
-    // === ДОБАВЛЕНИЕ БЛЮДА ===
-    addBtn.addEventListener('click', async () => {
-        const name = dishName.value.trim();
-        const price = dishPrice.value.trim();
-
-        if (!name || !price) {
-            alert('⚠️ Заполните название и цену!');
-            return;
-        }
-
-        addBtn.disabled = true;
-        addBtn.textContent = '⏳ Загрузка...';
-
-        try {
-            let imageUrl = '';
-
-            if (selectedFile) {
-                imageUrl = await uploadToImgBB(selectedFile);
-            }
-
-            const newDish = {
-                name: name,
-                description: dishDesc.value.trim(),
-                price: Number(price),
-                category: dishCategory.value,
-                imageUrl: imageUrl,
-                modelUrl: dishModel.value.trim(),
-                createdAt: Date.now()
-            };
-
-            await db.ref('menu').push(newDish);
-
-            alert('✅ Блюдо добавлено!');
-
-            // Очистка формы
-            dishName.value = '';
-            dishDesc.value = '';
-            dishPrice.value = '';
-            dishModel.value = '';
-            selectedFile = null;
-            dishPhoto.value = '';
-            previewImg.src = '';
-            uploadPreview.style.display = 'none';
-            uploadPlaceholder.style.display = 'flex';
-
-        } catch (error) {
-            alert('❌ Ошибка: ' + error.message);
-        }
-
-        addBtn.disabled = false;
-        addBtn.textContent = '🍽️ Добавить блюдо';
-    });
-
-    // === СПИСОК БЛЮД ===
-    db.ref('menu').on('value', (snapshot) => {
-        const data = snapshot.val();
-        dishesList.innerHTML = '';
-
-        if (!data) {
-            dishesList.innerHTML = '<p style="text-align:center; color:#888;">Меню пока пустое</p>';
-            return;
-        }
-
-        Object.keys(data).forEach(key => {
-            const item = data[key];
-            const div = document.createElement('div');
-            div.className = 'admin-item';
-            div.innerHTML = `
-                <div class="admin-item-info">
-                    ${item.imageUrl ? `<img src="${item.imageUrl}" class="admin-thumb" alt="${item.name}">` : '<div class="admin-thumb-empty">📷</div>'}
-                    <div>
-                        <h4>${item.name}</h4>
-                        <span>${item.price} ₸</span>
-                    </div>
-                </div>
-                <button class="delete-btn" data-id="${key}">🗑️</button>
-            `;
-
-            div.querySelector('.delete-btn').addEventListener('click', () => {
-                if (confirm('Удалить "' + item.name + '"?')) {
-                    db.ref('menu/' + key).remove();
+// Загрузка меню (realtime)
+function loadMenu() {
+    db.ref('dishes').on('value', snap => {
+        const data = snap.val();
+        allDishes = [];
+        if (data) {
+            Object.keys(data).forEach(key => {
+                const dish = data[key];
+                if (dish.active !== false) {
+                    allDishes.push({ id: key, ...dish });
                 }
             });
+        }
+        // Сортировка по order, потом по имени
+        allDishes.sort((a, b) => (a.order || 999) - (b.order || 999));
+        
+        // Собираем категории
+        const catSet = new Set();
+        allDishes.forEach(d => { if (d.category) catSet.add(d.category); });
+        categories = Array.from(catSet);
+        
+        renderCategories();
+        renderMenu();
+    }, err => {
+        console.error('Firebase menu error:', err);
+        document.getElementById('menuContainer').innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Ошибка загрузки меню. Проверьте интернет</p></div>';
+    });
+}
 
-            dishesList.appendChild(div);
+// ============================================================
+//  RENDER CATEGORIES
+// ============================================================
+function renderCategories() {
+    const inner = document.getElementById('categoriesInner');
+    let html = `<button class="cat-btn ${activeCategory === 'all' ? 'active' : ''}" data-category="all" onclick="filterCategory(this.dataset.category)">Всё меню</button>`;
+    
+    categories.forEach(cat => {
+        html += `<button class="cat-btn ${activeCategory === cat ? 'active' : ''}" data-category="${escapeHtml(cat)}" onclick="filterCategory(this.dataset.category)">${cat}</button>`;
+    });
+    inner.innerHTML = html;
+}
+
+function filterCategory(cat) {
+    activeCategory = cat;
+    renderCategories();
+    renderMenu();
+    // Скролл вверх
+    document.getElementById('menuContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ============================================================
+//  RENDER MENU
+// ============================================================
+function renderMenu() {
+    const container = document.getElementById('menuContainer');
+    document.getElementById('loadingState')?.remove();
+    
+    const filtered = activeCategory === 'all' ? allDishes : allDishes.filter(d => d.category === activeCategory);
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">🍽️</div>
+                <p>Меню пока пусто</p>
+            </div>`;
+        return;
+    }
+
+    // Группировка по категориям
+    const grouped = {};
+    filtered.forEach(d => {
+        const cat = d.category || 'Без категории';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(d);
+    });
+
+    let html = '';
+    Object.keys(grouped).forEach(cat => {
+        if (activeCategory === 'all') {
+            html += `<div class="category-title">${cat}</div>`;
+        }
+        grouped[cat].forEach(dish => {
+            const imgHtml = dish.image 
+                ? `<img class="dish-img" src="${dish.image}" alt="${dish.name}" loading="lazy" onerror="this.parentNode.classList.add('no-img'); this.style.display='none';">`
+                : `<div class="dish-img no-img">🍽️</div>`;
+            
+            const arBadge = dish.model3d ? '<span class="ar-badge">3D / AR</span>' : '';
+            const currency = restaurantInfo.currency || '₸';
+            
+            html += `
+                <div class="dish-card" data-dish-id="${escapeHtml(dish.id)}" onclick="openDish(this.dataset.dishId)">
+                    ${imgHtml}
+                    <div class="dish-info">
+                        <div class="dish-name">${dish.name}</div>
+                        <div class="dish-desc">${dish.description || ''}</div>
+                        <div class="dish-bottom">
+                            <span class="dish-price">${formatPrice(dish.price)} ${currency}</span>
+                            <span class="dish-weight">${dish.weight ? dish.weight + ' г' : ''}</span>
+                        </div>
+                    </div>
+                    ${arBadge}
+                </div>`;
         });
     });
-</script>
 
+    container.innerHTML = html;
+}
+
+function formatPrice(p) {
+    return Number(p || 0).toLocaleString('ru-RU');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================================
+//  DISH MODAL
+// ============================================================
+function openDish(id) {
+    currentDish = allDishes.find(d => d.id === id);
+    if (!currentDish) return;
+
+    const m = document.getElementById('dishModal');
+    const currency = restaurantInfo.currency || '₸';
+
+    const modalImg = document.getElementById('modalImg');
+    const imgWrap = document.querySelector('.modal-img-wrap');
+    
+    if (currentDish.image) {
+        modalImg.src = currentDish.image;
+        modalImg.style.display = 'block';
+        imgWrap.classList.remove('no-img');
+    } else {
+        modalImg.style.display = 'none';
+        imgWrap.classList.add('no-img');
+    }
+    
+    modalImg.onerror = function() {
+        this.style.display = 'none';
+        imgWrap.classList.add('no-img');
+    };
+    document.getElementById('modalName').textContent = currentDish.name;
+    document.getElementById('modalCategory').textContent = currentDish.category || '';
+    document.getElementById('modalDesc').textContent = currentDish.description || 'Описание скоро появится';
+
+    // Meta
+    let metaHtml = `
+        <div class="modal-meta-item">
+            <div class="modal-meta-value">${formatPrice(currentDish.price)} ${currency}</div>
+            <div class="modal-meta-label">Цена</div>
+        </div>`;
+    if (currentDish.weight) {
+        metaHtml += `
+            <div class="modal-meta-item">
+                <div class="modal-meta-value">${currentDish.weight} г</div>
+                <div class="modal-meta-label">Вес</div>
+            </div>`;
+    }
+    if (currentDish.calories) {
+        metaHtml += `
+            <div class="modal-meta-item">
+                <div class="modal-meta-value">${currentDish.calories}</div>
+                <div class="modal-meta-label">Ккал</div>
+            </div>`;
+    }
+    if (currentDish.cookTime) {
+        metaHtml += `
+            <div class="modal-meta-item">
+                <div class="modal-meta-value">${currentDish.cookTime}</div>
+                <div class="modal-meta-label">Время</div>
+            </div>`;
+    }
+    document.getElementById('modalMeta').innerHTML = metaHtml;
+
+    // AR кнопка
+    const arBtn = document.getElementById('modalArBtn');
+    if (currentDish.model3d) {
+        arBtn.style.display = 'flex';
+    } else {
+        arBtn.style.display = 'none';
+    }
+
+    m.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('dishModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Закрытие модалки по клику на оверлей
+document.getElementById('dishModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+});
+
+// ============================================================
+//  AR VIEWER
+// ============================================================
+function openAR() {
+    if (!currentDish || !currentDish.model3d) return;
+    closeModal();
+
+    const viewer = document.getElementById('arViewer');
+    const mv = document.getElementById('arModelViewer');
+    document.getElementById('arTitle').textContent = currentDish.name;
+    
+    // Ошибка при загрузке модели
+    mv.addEventListener('error', () => {
+        showToast('⚠️ Ошибка загрузки 3D модели');
+    }, { once: true });
+    
+    mv.setAttribute('src', currentDish.model3d);
+    if (currentDish.image) {
+        mv.setAttribute('poster', currentDish.image);
+    }
+    mv.setAttribute('alt', currentDish.name);
+    
+    viewer.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAR() {
+    const viewer = document.getElementById('arViewer');
+    const mv = document.getElementById('arModelViewer');
+    viewer.classList.remove('show');
+    mv.removeAttribute('src');
+    document.body.style.overflow = '';
+}
+
+// ============================================================
+//  КОРЗИНА
+// ============================================================
+function addToCartFromModal() {
+    if (!currentDish) return;
+    addToCart(currentDish);
+    closeModal();
+    showToast(`${currentDish.name} добавлен в корзину`);
+}
+
+function addToCart(dish) {
+    const existing = cart.find(c => c.id === dish.id);
+    if (existing) {
+        existing.qty++;
+    } else {
+        cart.push({ id: dish.id, name: dish.name, price: dish.price, image: dish.image || '', qty: 1 });
+    }
+    saveCart();
+    updateCartUI();
+}
+
+function removeFromCart(id) {
+    const idx = cart.findIndex(c => c.id === id);
+    if (idx !== -1) {
+        if (cart[idx].qty > 1) {
+            cart[idx].qty--;
+        } else {
+            cart.splice(idx, 1);
+        }
+    }
+    saveCart();
+    updateCartUI();
+    renderCartItems();
+}
+
+function addQty(id) {
+    const item = cart.find(c => c.id === id);
+    if (item) item.qty++;
+    saveCart();
+    updateCartUI();
+    renderCartItems();
+}
+
+function clearCart() {
+    cart = [];
+    saveCart();
+    updateCartUI();
+    closeCart();
+}
+
+function saveCart() {
+    localStorage.setItem('ar_menu_cart', JSON.stringify(cart));
+}
+
+function updateCartUI() {
+    const fab = document.getElementById('cartFab');
+    const count = document.getElementById('cartCount');
+    const totalQty = cart.reduce((s, c) => s + c.qty, 0);
+    
+    if (totalQty > 0) {
+        fab.classList.add('visible');
+        count.textContent = totalQty;
+    } else {
+        fab.classList.remove('visible');
+    }
+}
+
+function openCart() {
+    renderCartItems();
+    document.getElementById('cartPanel').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCart() {
+    document.getElementById('cartPanel').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+document.getElementById('cartPanel').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeCart();
+});
+
+function renderCartItems() {
+    const container = document.getElementById('cartItems');
+    const currency = restaurantInfo.currency || '₸';
+    
+    if (cart.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>Корзина пуста</p></div>';
+        document.getElementById('cartTotal').textContent = `0 ${currency}`;
+        return;
+    }
+
+    let html = '';
+    let total = 0;
+
+    cart.forEach(item => {
+        const sum = item.price * item.qty;
+        total += sum;
+        const imgHtml = item.image 
+            ? `<img class="cart-item-img" src="${item.image}" alt="" onerror="this.style.display='none'; this.parentNode.classList.add('no-img');">`
+            : `<div class="cart-item-img no-img" style="font-size:1.2rem">🍽️</div>`;
+        
+        html += `
+            <div class="cart-item">
+                ${imgHtml}
+                <div class="cart-item-info">
+                    <div class="cart-item-name">${escapeHtml(item.name)}</div>
+                    <div class="cart-item-price">${formatPrice(sum)} ${currency}</div>
+                </div>
+                <div class="cart-item-qty">
+                    <button class="qty-btn" data-item-id="${escapeHtml(item.id)}" onclick="removeFromCart(this.dataset.itemId)">−</button>
+                    <span class="qty-value">${item.qty}</span>
+                    <button class="qty-btn" data-item-id="${escapeHtml(item.id)}" onclick="addQty(this.dataset.itemId)">+</button>
+                </div>
+            </div>`;
+    });
+
+    container.innerHTML = html;
+    document.getElementById('cartTotal').textContent = `${formatPrice(total)} ${currency}`;
+}
+
+function submitOrder() {
+    if (cart.length === 0) return;
+    
+    const currency = restaurantInfo.currency || '₸';
+    const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+    
+    // Сохраняем заказ в Firebase
+    const order = {
+        items: cart.map(c => ({ name: c.name, qty: c.qty, price: c.price })),
+        total: total,
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        table: getTableNumber()
+    };
+
+    db.ref('orders').push(order)
+        .then(() => {
+            showToast(`✅ Заказ отправлен! Итого: ${formatPrice(total)} ${currency}`);
+            clearCart();
+        })
+        .catch(err => {
+            console.error('Order error:', err);
+            showToast('❌ Ошибка отправки: проверьте интернет');
+        });
+}
+
+function getTableNumber() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('table') || 'Не указан';
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
 </body>
 </html>

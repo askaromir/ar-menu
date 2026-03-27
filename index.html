@@ -3,167 +3,1180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-панель | AR Меню</title>
-    <link rel="stylesheet" href="style.css">
+    <title>AR Menu — Админ-панель</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
+    <!-- QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0a0a;
+            --card: #141414;
+            --accent: #ff6b35;
+            --accent2: #4caf50;
+            --text: #fff;
+            --muted: #888;
+            --dim: #555;
+            --border: #222;
+            --danger: #e53935;
+            --radius: 14px;
+            --font: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ===== LOGIN ===== */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px 32px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-logo { font-size: 2.5rem; margin-bottom: 8px; }
+        .login-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+        .login-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 28px; }
+
+        .form-group { margin-bottom: 16px; text-align: left; }
+        .form-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; display: block; font-weight: 600; }
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .form-input:focus { border-color: var(--accent); }
+        .form-input::placeholder { color: var(--dim); }
+
+        textarea.form-input { resize: vertical; min-height: 80px; }
+        select.form-input { cursor: pointer; }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-success { background: var(--accent2); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-sm { padding: 8px 16px; font-size: 0.8rem; width: auto; }
+
+        .error-msg { color: var(--danger); font-size: 0.8rem; margin-top: 10px; }
+
+        /* ===== ADMIN PANEL ===== */
+        .admin-screen { display: none; }
+        .admin-screen.show { display: block; }
+        .login-screen.hide { display: none; }
+
+        .admin-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-logo { font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+        .admin-user { display: flex; align-items: center; gap: 12px; }
+        .admin-email { font-size: 0.75rem; color: var(--muted); }
+        .btn-logout {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* TABS */
+        .admin-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            overflow-x: auto;
+        }
+        .admin-tab {
+            padding: 14px 24px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        .admin-tab:hover { color: var(--text); }
+        .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .tab-content { display: none; padding: 24px 20px; max-width: 900px; margin: 0 auto; }
+        .tab-content.show { display: block; }
+
+        /* SECTION */
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title .count {
+            font-size: 0.75rem;
+            background: var(--border);
+            padding: 2px 10px;
+            border-radius: 50px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        /* DISH LIST */
+        .dish-admin-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        .dish-admin-card:hover { border-color: #333; }
+
+        .dish-admin-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+            background: #1a1a1a;
+            flex-shrink: 0;
+        }
+        .dish-admin-info { flex: 1; min-width: 0; }
+        .dish-admin-name { font-weight: 700; font-size: 0.95rem; }
+        .dish-admin-meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+        .dish-admin-price { color: var(--accent); font-weight: 700; }
+        .dish-admin-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .icon-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* FORM MODAL */
+        .form-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .form-overlay.show { display: flex; }
+
+        .form-modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px 24px;
+        }
+        .form-modal-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+        .toggle-label { font-size: 0.85rem; }
+
+        .toggle {
+            width: 44px;
+            height: 24px;
+            background: var(--border);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle.on { background: var(--accent2); }
+        .toggle::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+        .toggle.on::after { transform: translateX(20px); }
+
+        /* QR */
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .qr-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+        }
+        .qr-card canvas { border-radius: 10px; }
+        .qr-table-name { font-weight: 700; margin-top: 10px; font-size: 0.95rem; }
+        .qr-url { font-size: 0.65rem; color: var(--dim); word-break: break-all; margin-top: 4px; }
+        .qr-actions { margin-top: 10px; display: flex; gap: 8px; justify-content: center; }
+
+        /* ORDERS */
+        .order-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .order-id { font-weight: 700; font-size: 0.85rem; }
+        .order-time { font-size: 0.75rem; color: var(--muted); }
+        .order-table {
+            font-size: 0.75rem;
+            background: var(--accent);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 50px;
+            font-weight: 600;
+        }
+        .order-items { font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+        .order-total { font-weight: 700; color: var(--accent); }
+        .order-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .status-new { background: rgba(255,107,53,0.2); color: var(--accent); }
+        .status-done { background: rgba(76,175,80,0.2); color: var(--accent2); }
+
+        /* SETTINGS */
+        .settings-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .settings-title { font-weight: 700; margin-bottom: 16px; font-size: 1rem; }
+
+        /* STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; }
+
+        /* RESPONSIVE */
+        @media (max-width: 500px) {
+            .form-row { flex-direction: column; gap: 0; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent2);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 3000;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
 </head>
 <body>
 
-<div class="admin-header">
-    <h1>⚙️ Админ-панель</h1>
-    <p>Управление блюдами | <a href="index.html">← Перейти в меню</a></p>
-</div>
-
-<!-- Форма добавления блюда -->
-<div class="admin-form">
-    <h2>➕ Добавить блюдо</h2>
-
-    <div class="form-group">
-        <label>Название блюда *</label>
-        <input type="text" id="dish-name" placeholder="Например: Стейк Рибай">
+    <!-- ===== LOGIN SCREEN ===== -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-box">
+            <div class="login-logo">🔐</div>
+            <div class="login-title">AR Menu Admin</div>
+            <div class="login-sub">Войдите для управления меню</div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" type="email" id="loginEmail" placeholder="admin@restaurant.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Пароль</label>
+                <input class="form-input" type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+            </div>
+            <button class="btn btn-primary" onclick="login()">Войти</button>
+            <div class="error-msg" id="loginError"></div>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label>Описание</label>
-        <textarea id="dish-desc" placeholder="Сочный стейк из мраморной говядины..."></textarea>
+    <!-- ===== ADMIN SCREEN ===== -->
+    <div class="admin-screen" id="adminScreen">
+        <header class="admin-header">
+            <span class="admin-logo">🔧 AR Menu Admin</span>
+            <div class="admin-user">
+                <span class="admin-email" id="adminEmail"></span>
+                <button class="btn-logout" onclick="logout()">Выйти</button>
+            </div>
+        </header>
+
+        <nav class="admin-tabs">
+            <button class="admin-tab active" onclick="switchTab('dishes', this)">🍽️ Блюда</button>
+            <button class="admin-tab" onclick="switchTab('orders', this)">📋 Заказы</button>
+            <button class="admin-tab" onclick="switchTab('qr', this)">📱 QR-коды</button>
+            <button class="admin-tab" onclick="switchTab('settings', this)">⚙️ Настройки</button>
+        </nav>
+
+        <!-- TAB: Блюда -->
+        <div class="tab-content show" id="tab-dishes">
+            <div class="stats-grid" id="dishStats"></div>
+            <div class="section-title">
+                Меню <span class="count" id="dishCount">0</span>
+                <div style="flex:1"></div>
+                <button class="btn btn-primary btn-sm" onclick="openDishForm()">+ Добавить блюдо</button>
+            </div>
+            <div id="dishList"></div>
+        </div>
+
+        <!-- TAB: Заказы -->
+        <div class="tab-content" id="tab-orders">
+            <div class="section-title">
+                Заказы <span class="count" id="orderCount">0</span>
+                <div style="flex:1"></div>
+                <button class="btn btn-outline btn-sm" onclick="clearOldOrders()">🗑️ Очистить старые</button>
+            </div>
+            <div id="orderList"></div>
+        </div>
+
+        <!-- TAB: QR -->
+        <div class="tab-content" id="tab-qr">
+            <div class="section-title">QR-коды для столов</div>
+            <div class="form-row" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Кол-во столов</label>
+                    <input class="form-input" type="number" id="qrTableCount" value="10" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">URL меню</label>
+                    <input class="form-input" type="text" id="qrBaseUrl" placeholder="https://user.github.io/ar-menu/">
+                </div>
+            </div>
+            <button class="btn btn-primary" style="max-width:250px; margin-bottom: 24px;" onclick="generateQRs()">Сгенерировать QR-коды</button>
+            <div class="qr-grid" id="qrGrid"></div>
+        </div>
+
+        <!-- TAB: Настройки -->
+        <div class="tab-content" id="tab-settings">
+            <div class="settings-card">
+                <div class="settings-title">🏪 Информация о ресторане</div>
+                <div class="form-group">
+                    <label class="form-label">Название</label>
+                    <input class="form-input" type="text" id="setName" placeholder="Мой Ресторан">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Подзаголовок</label>
+                    <input class="form-input" type="text" id="setTagline" placeholder="Лучшая кухня города">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Валюта</label>
+                    <select class="form-input" id="setCurrency">
+                        <option value="₸">₸ (Тенге)</option>
+                        <option value="₽">₽ (Рубль)</option>
+                        <option value="$">$ (Доллар)</option>
+                        <option value="€">€ (Евро)</option>
+                        <option value="сум">сум (Узб. сум)</option>
+                        <option value="сом">сом (Кирг. сом)</option>
+                    </select>
+                </div>
+                <button class="btn btn-success" style="max-width:200px; margin-top: 8px;" onclick="saveSettings()">💾 Сохранить</button>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-title">🔒 Firebase Security Rules</div>
+                <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">
+                    Скопируйте эти правила в Firebase Console → Realtime Database → Rules:
+                </p>
+                <pre style="background: var(--bg); padding: 16px; border-radius: 10px; font-size: 0.8rem; overflow-x: auto; color: var(--accent); line-height: 1.6;">{
+  "rules": {
+    "dishes": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "orders": {
+      ".read": "auth != null",
+      ".write": true
+    }
+  }
+}</pre>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-title">📦 Экспорт / Импорт данных</div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="exportData()">⬇️ Экспорт JSON</button>
+                    <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+                        ⬆️ Импорт JSON
+                        <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-title">📝 Демо-данные</div>
+                <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">
+                    Загрузить примеры блюд для демонстрации клиенту
+                </p>
+                <button class="btn btn-primary btn-sm" onclick="loadDemoData()">🎭 Загрузить демо</button>
+            </div>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label>Цена (₸) *</label>
-        <input type="number" id="dish-price" placeholder="4500">
+    <!-- ФОРМА БЛЮДА -->
+    <div class="form-overlay" id="dishFormOverlay">
+        <div class="form-modal">
+            <div class="form-modal-title">
+                <span id="formTitle">Новое блюдо</span>
+                <button class="icon-btn" onclick="closeDishForm()">✕</button>
+            </div>
+
+            <input type="hidden" id="editDishId">
+            
+            <div class="form-group">
+                <label class="form-label">Название *</label>
+                <input class="form-input" type="text" id="dishName" placeholder="Стейк Рибай">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <textarea class="form-input" id="dishDesc" placeholder="Сочный стейк средней прожарки..."></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Цена *</label>
+                    <input class="form-input" type="number" id="dishPrice" placeholder="5900">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Вес (г)</label>
+                    <input class="form-input" type="number" id="dishWeight" placeholder="350">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Категория *</label>
+                    <input class="form-input" type="text" id="dishCategory" placeholder="Горячее" list="categoryList">
+                    <datalist id="categoryList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Порядок</label>
+                    <input class="form-input" type="number" id="dishOrder" placeholder="1" value="10">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Калории</label>
+                    <input class="form-input" type="text" id="dishCalories" placeholder="450 ккал">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Время готовки</label>
+                    <input class="form-input" type="text" id="dishCookTime" placeholder="15 мин">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">URL фото</label>
+                <input class="form-input" type="url" id="dishImage" placeholder="https://example.com/photo.jpg">
+                <small style="color:var(--dim); font-size:0.7rem;">Используйте Unsplash, Imgur или любой прямой URL на картинку</small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">URL 3D модели (.glb)</label>
+                <input class="form-input" type="url" id="dishModel" placeholder="https://example.com/model.glb">
+                <small style="color:var(--dim); font-size:0.7rem;">Бесплатные модели: <a href="https://sketchfab.com" target="_blank" style="color:var(--accent)">sketchfab.com</a>, <a href="https://poly.pizza" target="_blank" style="color:var(--accent)">poly.pizza</a></small>
+            </div>
+            
+            <div class="toggle-row">
+                <span class="toggle-label">Активно (видно в меню)</span>
+                <div class="toggle on" id="dishActive" onclick="this.classList.toggle('on')"></div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveDish()" style="flex:1">💾 Сохранить</button>
+                <button class="btn btn-outline" onclick="closeDishForm()" style="flex:0.5">Отмена</button>
+            </div>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label>Категория</label>
-        <select id="dish-category">
-            <option value="main">🥩 Основные блюда</option>
-            <option value="soup">🍲 Супы</option>
-            <option value="salad">🥗 Салаты</option>
-            <option value="dessert">🍰 Десерты</option>
-            <option value="drink">🥤 Напитки</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>Ссылка на изображение</label>
-        <input type="url" id="dish-image" placeholder="https://example.com/photo.jpg">
-    </div>
-
-    <div class="form-group">
-        <label>Ссылка на 3D модель (.glb)</label>
-        <input type="url" id="dish-model" placeholder="https://example.com/model.glb">
-    </div>
-
-    <button class="submit-btn" id="add-dish">🍽️ Добавить блюдо</button>
-</div>
-
-<!-- Список существующих блюд -->
-<div class="admin-list">
-    <h2>📋 Текущее меню</h2>
-    <div id="dishes-list">
-        <p class="loading">⏳ Загрузка...</p>
-    </div>
-</div>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
 
 <script>
-    // Firebase конфиг
-    const firebaseConfig = {
-        apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhjCTh0gekSgcs",
-        authDomain: "ar-menu-resto.firebaseapp.com",
-        databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "ar-menu-resto",
-        storageBucket: "ar-menu-resto.firebasestorage.app",
-        messagingSenderId: "191825847434",
-        appId: "1:191825847434:web:3ac9c25c7108e363c73973",
-        measurementId: "G-RFVSR4EPWP"
+// ============================================================
+//  FIREBASE CONFIG
+// ============================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhiCTh0gekSgcs",
+    authDomain: "ar-menu-resto.firebaseapp.com",
+    databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ar-menu-resto",
+    storageBucket: "ar-menu-resto.firebasestorage.app",
+    messagingSenderId: "191825847434",
+    appId: "1:191825847434:web:3ac9c25c7108e363c73973",
+    measurementId: "G-RFVSR4EPWP"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+let allDishes = {};
+let allOrders = {};
+let existingCategories = [];
+
+// ============================================================
+//  AUTH
+// ============================================================
+auth.onAuthStateChanged(user => {
+    if (user) {
+        showAdmin(user);
+    } else {
+        showLogin();
+    }
+});
+
+function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    document.getElementById('loginError').textContent = '';
+
+    if (!email || !pass) {
+        document.getElementById('loginError').textContent = 'Заполните все поля';
+        return;
+    }
+
+    auth.signInWithEmailAndPassword(email, pass)
+        .catch(err => {
+            let msg = 'Ошибка входа';
+            if (err.code === 'auth/user-not-found') msg = 'Пользователь не найден';
+            if (err.code === 'auth/wrong-password') msg = 'Неверный пароль';
+            if (err.code === 'auth/invalid-email') msg = 'Некорректный email';
+            if (err.code === 'auth/invalid-credential') msg = 'Неверные учётные данные';
+            document.getElementById('loginError').textContent = msg;
+        });
+}
+
+function logout() {
+    auth.signOut();
+}
+
+function showAdmin(user) {
+    document.getElementById('loginScreen').classList.add('hide');
+    document.getElementById('adminScreen').classList.add('show');
+    document.getElementById('adminEmail').textContent = user.email;
+    loadDishes();
+    loadOrders();
+    loadSettings();
+}
+
+function showLogin() {
+    document.getElementById('loginScreen').classList.remove('hide');
+    document.getElementById('adminScreen').classList.remove('show');
+}
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('show'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('show');
+    btn.classList.add('active');
+}
+
+// ============================================================
+//  DISHES CRUD
+// ============================================================
+function loadDishes() {
+    db.ref('dishes').on('value', snap => {
+        allDishes = snap.val() || {};
+        renderDishList();
+        updateDishStats();
+    });
+}
+
+function renderDishList() {
+    const list = document.getElementById('dishList');
+    const keys = Object.keys(allDishes);
+    document.getElementById('dishCount').textContent = keys.length;
+
+    // Категории для datalist
+    const cats = new Set();
+    keys.forEach(k => { if (allDishes[k].category) cats.add(allDishes[k].category); });
+    existingCategories = Array.from(cats);
+    const dl = document.getElementById('categoryList');
+    dl.innerHTML = existingCategories.map(c => `<option value="${c}">`).join('');
+
+    if (keys.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--dim);">Блюд пока нет. Добавьте первое! 🍽️</div>';
+        return;
+    }
+
+    // Сортировка
+    const sorted = keys.sort((a, b) => {
+        const catA = allDishes[a].category || 'zzz';
+        const catB = allDishes[b].category || 'zzz';
+        if (catA !== catB) return catA.localeCompare(catB);
+        return (allDishes[a].order || 999) - (allDishes[b].order || 999);
+    });
+
+    let html = '';
+    let lastCat = '';
+    sorted.forEach(key => {
+        const d = allDishes[key];
+        if (d.category !== lastCat) {
+            lastCat = d.category;
+            html += `<div style="font-size: 0.8rem; color: var(--accent); font-weight: 700; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 1px;">${d.category || 'Без категории'}</div>`;
+        }
+        
+        const imgHtml = d.image 
+            ? `<img class="dish-admin-img" src="${d.image}" onerror="this.style.display='none'">`
+            : `<div class="dish-admin-img" style="display:flex;align-items:center;justify-content:center;">🍽️</div>`;
+        
+        const status = d.active !== false ? '🟢' : '🔴';
+        const arTag = d.model3d ? ' • 3D' : '';
+        
+        html += `
+            <div class="dish-admin-card">
+                ${imgHtml}
+                <div class="dish-admin-info">
+                    <div class="dish-admin-name">${status} ${d.name}</div>
+                    <div class="dish-admin-meta">
+                        <span class="dish-admin-price">${Number(d.price||0).toLocaleString('ru')} ${d.currency || '₸'}</span>
+                        • ${d.weight ? d.weight + 'г' : ''} ${arTag}
+                    </div>
+                </div>
+                <div class="dish-admin-actions">
+                    <button class="icon-btn" onclick="editDish('${key}')" title="Редактировать">✏️</button>
+                    <button class="icon-btn danger" onclick="deleteDish('${key}')" title="Удалить">🗑️</button>
+                </div>
+            </div>`;
+    });
+    list.innerHTML = html;
+}
+
+function updateDishStats() {
+    const keys = Object.keys(allDishes);
+    const active = keys.filter(k => allDishes[k].active !== false).length;
+    const withAR = keys.filter(k => allDishes[k].model3d).length;
+    const cats = new Set(keys.map(k => allDishes[k].category).filter(Boolean));
+    
+    document.getElementById('dishStats').innerHTML = `
+        <div class="stat-card"><div class="stat-value">${keys.length}</div><div class="stat-label">Всего блюд</div></div>
+        <div class="stat-card"><div class="stat-value">${active}</div><div class="stat-label">Активных</div></div>
+        <div class="stat-card"><div class="stat-value">${withAR}</div><div class="stat-label">С 3D/AR</div></div>
+        <div class="stat-card"><div class="stat-value">${cats.size}</div><div class="stat-label">Категорий</div></div>
+    `;
+}
+
+// Форма блюда
+function openDishForm(id) {
+    document.getElementById('editDishId').value = id || '';
+    document.getElementById('formTitle').textContent = id ? 'Редактировать блюдо' : 'Новое блюдо';
+
+    if (id && allDishes[id]) {
+        const d = allDishes[id];
+        document.getElementById('dishName').value = d.name || '';
+        document.getElementById('dishDesc').value = d.description || '';
+        document.getElementById('dishPrice').value = d.price || '';
+        document.getElementById('dishWeight').value = d.weight || '';
+        document.getElementById('dishCategory').value = d.category || '';
+        document.getElementById('dishOrder').value = d.order || 10;
+        document.getElementById('dishCalories').value = d.calories || '';
+        document.getElementById('dishCookTime').value = d.cookTime || '';
+        document.getElementById('dishImage').value = d.image || '';
+        document.getElementById('dishModel').value = d.model3d || '';
+        const toggle = document.getElementById('dishActive');
+        d.active !== false ? toggle.classList.add('on') : toggle.classList.remove('on');
+    } else {
+        // Reset
+        ['dishName','dishDesc','dishPrice','dishWeight','dishCategory','dishCalories','dishCookTime','dishImage','dishModel'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('dishOrder').value = 10;
+        document.getElementById('dishActive').classList.add('on');
+    }
+
+    document.getElementById('dishFormOverlay').classList.add('show');
+}
+
+function closeDishForm() {
+    document.getElementById('dishFormOverlay').classList.remove('show');
+}
+
+document.getElementById('dishFormOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeDishForm();
+});
+
+function saveDish() {
+    const name = document.getElementById('dishName').value.trim();
+    const price = parseFloat(document.getElementById('dishPrice').value);
+    const category = document.getElementById('dishCategory').value.trim();
+
+    if (!name) return showToast('❌ Введите название');
+    if (!price && price !== 0) return showToast('❌ Введите цену');
+    if (!category) return showToast('❌ Введите категорию');
+
+    const dish = {
+        name,
+        description: document.getElementById('dishDesc').value.trim(),
+        price,
+        weight: document.getElementById('dishWeight').value.trim(),
+        category,
+        order: parseInt(document.getElementById('dishOrder').value) || 10,
+        calories: document.getElementById('dishCalories').value.trim(),
+        cookTime: document.getElementById('dishCookTime').value.trim(),
+        image: document.getElementById('dishImage').value.trim(),
+        model3d: document.getElementById('dishModel').value.trim(),
+        active: document.getElementById('dishActive').classList.contains('on'),
+        updatedAt: new Date().toISOString()
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const editId = document.getElementById('editDishId').value;
+    
+    if (editId) {
+        db.ref('dishes/' + editId).update(dish)
+            .then(() => { closeDishForm(); showToast('✅ Блюдо обновлено'); })
+            .catch(e => showToast('❌ ' + e.message));
+    } else {
+        dish.createdAt = new Date().toISOString();
+        db.ref('dishes').push(dish)
+            .then(() => { closeDishForm(); showToast('✅ Блюдо добавлено'); })
+            .catch(e => showToast('❌ ' + e.message));
+    }
+}
 
-    // Элементы формы
-    const dishName = document.getElementById('dish-name');
-    const dishDesc = document.getElementById('dish-desc');
-    const dishPrice = document.getElementById('dish-price');
-    const dishCategory = document.getElementById('dish-category');
-    const dishImage = document.getElementById('dish-image');
-    const dishModel = document.getElementById('dish-model');
-    const addBtn = document.getElementById('add-dish');
-    const dishesList = document.getElementById('dishes-list');
+function editDish(id) {
+    openDishForm(id);
+}
 
-    // Добавление блюда
-    addBtn.addEventListener('click', () => {
-        const name = dishName.value.trim();
-        const price = dishPrice.value.trim();
+function deleteDish(id) {
+    const name = allDishes[id]?.name || '';
+    if (confirm(`Удалить "${name}"?`)) {
+        db.ref('dishes/' + id).remove()
+            .then(() => showToast('🗑️ Удалено'))
+            .catch(e => showToast('❌ ' + e.message));
+    }
+}
 
-        if (!name || !price) {
-            alert('⚠️ Заполните название и цену!');
-            return;
-        }
+// ============================================================
+//  ORDERS
+// ============================================================
+function loadOrders() {
+    db.ref('orders').orderByChild('createdAt').on('value', snap => {
+        allOrders = snap.val() || {};
+        renderOrders();
+    });
+}
 
-        const newDish = {
-            name: name,
-            description: dishDesc.value.trim(),
-            price: Number(price),
-            category: dishCategory.value,
-            imageUrl: dishImage.value.trim(),
-            modelUrl: dishModel.value.trim(),
-            createdAt: Date.now()
-        };
+function renderOrders() {
+    const list = document.getElementById('orderList');
+    const keys = Object.keys(allOrders);
+    document.getElementById('orderCount').textContent = keys.length;
 
-        db.ref('menu').push(newDish)
-            .then(() => {
-                alert('✅ Блюдо добавлено!');
-                // Очистка формы
-                dishName.value = '';
-                dishDesc.value = '';
-                dishPrice.value = '';
-                dishImage.value = '';
-                dishModel.value = '';
-            })
-            .catch((error) => {
-                alert('❌ Ошибка: ' + error.message);
-            });
+    if (keys.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding: 40px; color: var(--dim);">Заказов пока нет</div>';
+        return;
+    }
+
+    // Новые сверху
+    const sorted = keys.sort((a, b) => {
+        const tA = allOrders[a].createdAt || '';
+        const tB = allOrders[b].createdAt || '';
+        return tB.localeCompare(tA);
     });
 
-    // Загрузка и отображение списка блюд
-    db.ref('menu').on('value', (snapshot) => {
-        const data = snapshot.val();
-        dishesList.innerHTML = '';
-
-        if (!data) {
-            dishesList.innerHTML = '<p class="loading">Меню пока пустое</p>';
-            return;
-        }
-
-        Object.keys(data).forEach(key => {
-            const item = data[key];
-            const div = document.createElement('div');
-            div.className = 'admin-item';
-            div.innerHTML = `
-                <div class="admin-item-info">
-                    <h4>${item.name}</h4>
-                    <span>${item.price} ₸</span>
+    let html = '';
+    sorted.forEach(key => {
+        const o = allOrders[key];
+        const date = o.createdAt ? new Date(o.createdAt).toLocaleString('ru-RU') : '—';
+        const items = (o.items || []).map(i => `${i.name} ×${i.qty}`).join(', ');
+        const statusClass = o.status === 'done' ? 'status-done' : 'status-new';
+        const statusText = o.status === 'done' ? 'Выполнен' : 'Новый';
+        
+        html += `
+            <div class="order-card">
+                <div class="order-header">
+                    <div>
+                        <span class="order-id">#${key.slice(-6)}</span>
+                        <span class="order-table">Стол: ${o.table || '—'}</span>
+                    </div>
+                    <span class="order-time">${date}</span>
                 </div>
-                <button class="delete-btn" data-id="${key}">🗑️ Удалить</button>
-            `;
-
-            // Кнопка удаления
-            div.querySelector('.delete-btn').addEventListener('click', () => {
-                if (confirm(`Удалить "${item.name}"?`)) {
-                    db.ref('menu/' + key).remove()
-                        .then(() => alert('✅ Удалено!'))
-                        .catch((err) => alert('❌ Ошибка: ' + err.message));
-                }
-            });
-
-            dishesList.appendChild(div);
-        });
+                <div class="order-items">${items || 'Нет данных'}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="order-total">${Number(o.total||0).toLocaleString('ru')} ₸</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="order-status ${statusClass}">${statusText}</span>
+                        ${o.status !== 'done' ? `<button class="btn btn-success btn-sm" onclick="markDone('${key}')">✅</button>` : ''}
+                    </div>
+                </div>
+            </div>`;
     });
-</script>
 
+    list.innerHTML = html;
+}
+
+function markDone(id) {
+    db.ref('orders/' + id).update({ status: 'done' });
+}
+
+function clearOldOrders() {
+    if (!confirm('Удалить все выполненные заказы?')) return;
+    const keys = Object.keys(allOrders);
+    const updates = {};
+    keys.forEach(k => {
+        if (allOrders[k].status === 'done') updates[k] = null;
+    });
+    db.ref('orders').update(updates).then(() => showToast('🗑️ Старые заказы удалены'));
+}
+
+// ============================================================
+//  QR CODES
+// ============================================================
+function generateQRs() {
+    const count = parseInt(document.getElementById('qrTableCount').value) || 10;
+    let baseUrl = document.getElementById('qrBaseUrl').value.trim();
+    
+    if (!baseUrl) {
+        baseUrl = window.location.origin + window.location.pathname.replace('admin.html', 'index.html');
+    }
+    if (!baseUrl.endsWith('/') && !baseUrl.includes('.html')) baseUrl += '/';
+    if (!baseUrl.includes('.html')) baseUrl += 'index.html';
+
+    const grid = document.getElementById('qrGrid');
+    grid.innerHTML = '';
+
+    for (let i = 1; i <= count; i++) {
+        const url = `${baseUrl}?table=${i}`;
+        const card = document.createElement('div');
+        card.className = 'qr-card';
+        
+        const canvas = document.createElement('canvas');
+        card.innerHTML = `<div class="qr-table-name">Стол #${i}</div>`;
+        card.prepend(canvas);
+        
+        const urlDiv = document.createElement('div');
+        urlDiv.className = 'qr-url';
+        urlDiv.textContent = url;
+        card.appendChild(urlDiv);
+        
+        const actions = document.createElement('div');
+        actions.className = 'qr-actions';
+        actions.innerHTML = `<button class="btn btn-outline btn-sm" onclick="downloadQR(this, ${i})">⬇️ Скачать</button>`;
+        card.appendChild(actions);
+
+        grid.appendChild(card);
+
+        QRCode.toCanvas(canvas, url, {
+            width: 180,
+            margin: 2,
+            color: { dark: '#ff6b35', light: '#141414' }
+        });
+    }
+}
+
+function downloadQR(btn, num) {
+    const card = btn.closest('.qr-card');
+    const canvas = card.querySelector('canvas');
+    const link = document.createElement('a');
+    link.download = `table-${num}-qr.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+function loadSettings() {
+    db.ref('settings').on('value', snap => {
+        const data = snap.val();
+        if (data) {
+            document.getElementById('setName').value = data.name || '';
+            document.getElementById('setTagline').value = data.tagline || '';
+            document.getElementById('setCurrency').value = data.currency || '₸';
+        }
+    });
+}
+
+function saveSettings() {
+    const settings = {
+        name: document.getElementById('setName').value.trim(),
+        tagline: document.getElementById('setTagline').value.trim(),
+        currency: document.getElementById('setCurrency').value
+    };
+    db.ref('settings').set(settings)
+        .then(() => showToast('✅ Настройки сохранены'))
+        .catch(e => showToast('❌ ' + e.message));
+}
+
+// ============================================================
+//  EXPORT / IMPORT
+// ============================================================
+function exportData() {
+    db.ref().once('value').then(snap => {
+        const data = snap.val();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ar-menu-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('📦 Экспорт завершён');
+    });
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!confirm('⚠️ Импорт перезапишет все текущие данные! Продолжить?')) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            db.ref().set(data)
+                .then(() => showToast('✅ Импорт завершён'))
+                .catch(err => showToast('❌ ' + err.message));
+        } catch {
+            showToast('❌ Некорректный JSON файл');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// ============================================================
+//  DEMO DATA
+// ============================================================
+function loadDemoData() {
+    if (!confirm('Загрузить демо-данные? Существующие блюда сохранятся.')) return;
+
+    const demo = {
+        demo1: {
+            name: "Стейк Рибай",
+            description: "Сочный стейк из мраморной говядины, прожарка medium rare. Подаётся с овощами гриль и соусом чимичурри.",
+            price: 8900,
+            weight: "350",
+            category: "🥩 Горячее",
+            order: 1,
+            calories: "650 ккал",
+            cookTime: "20 мин",
+            image: "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400&h=300&fit=crop",
+            model3d: "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+            active: true,
+            createdAt: new Date().toISOString()
+        },
+        demo2: {
+            name: "Том Ям",
+            description: "Тайский острый суп с креветками, грибами шиитаке, лемонграссом и кокосовым молоком.",
+            price: 3900,
+            weight: "400",
+            category: "🍜 Супы",
+            order: 2,
+            calories: "280 ккал",
+            cookTime: "15 мин",
+            image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop",
+            model3d: "",
+            active: true,
+            createdAt: new Date().toISOString()
+        },
+        demo3: {
+            name: "Цезарь с курицей",
+            description: "Классический салат с хрустящим романо, пармезаном, крутонами и фирменной заправкой.",
+            price: 3200,
+            weight: "280",
+            category: "🥗 Салаты",
+            order: 3,
+            calories: "380 ккал",
+            cookTime: "10 мин",
+            image: "https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400&h=300&fit=crop",
+            model3d: "",
+            active: true,
+            createdAt: new Date().toISOString()
+        },
+        demo4: {
+            name: "Тирамису",
+            description: "Нежный итальянский десерт с маскарпоне, эспрессо и какао.",
+            price: 2500,
+            weight: "180",
+            category: "🍰 Десерты",
+            order: 4,
+            calories: "420 ккал",
+            cookTime: "—",
+            image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=300&fit=crop",
+            model3d: "",
+            active: true,
+            createdAt: new Date().toISOString()
+        },
+        demo5: {
+            name: "Лимонад Манго-Маракуйя",
+            description: "Освежающий домашний лимонад с пюре манго и маракуйи.",
+            price: 1200,
+            weight: "400",
+            category: "🥤 Напитки",
+            order: 5,
+            calories: "120 ккал",
+            cookTime: "5 мин",
+            image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&h=300&fit=crop",
+            model3d: "",
+            active: true,
+            createdAt: new Date().toISOString()
+        },
+        demo6: {
+            name: "Бургер Black Angus",
+            description: "Котлета из Black Angus, чеддер, бекон, карамелизированный лук, фирменный соус. Подаётся с картофелем фри.",
+            price: 4500,
+            weight: "420",
+            category: "🥩 Горячее",
+            order: 6,
+            calories: "780 ккал",
+            cookTime: "18 мин",
+            image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
+            model3d: "",
+            active: true,
+            createdAt: new Date().toISOString()
+        }
+    };
+
+    // Настройки ресторана
+    db.ref('settings').set({
+        name: "SAKURA",
+        tagline: "Fusion Kitchen & Bar",
+        currency: "₸"
+    });
+
+    db.ref('dishes').update(demo)
+        .then(() => showToast('🎭 Демо-данные загружены!'))
+        .catch(e => showToast('❌ ' + e.message));
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
 </body>
 </html>
