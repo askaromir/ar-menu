@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель | AR Меню</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-header {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            border-radius: 0 0 20px 20px;
+        }
+        .admin-header a {
+            color: #f39c12;
+            text-decoration: none;
+        }
+        .admin-form {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e2e;
+            border-radius: 16px;
+            border: 1px solid #333;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            color: #ccc;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #444;
+            border-radius: 10px;
+            background: #2a2a3a;
+            color: white;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #555;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #2a2a3a;
+        }
+        .upload-area:hover,
+        .upload-area.drag-over {
+            border-color: #f39c12;
+            background: #2a2a3a88;
+        }
+        .upload-placeholder {
+            color: #888;
+        }
+        .upload-placeholder .upload-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        .upload-preview {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+        }
+        .upload-preview img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .remove-photo {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Progress */
+        .upload-progress {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f39c12, #e74c3c);
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+        .progress-text {
+            color: #f39c12;
+            font-size: 13px;
+            min-width: 40px;
+        }
+
+        /* Button */
+        .add-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .add-btn:hover {
+            transform: scale(1.02);
+        }
+        .add-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Dishes List */
+        .dishes-section {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 0 20px 40px;
+        }
+        .dishes-section h2 {
+            color: white;
+            text-align: center;
+        }
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e1e2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .admin-item-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .admin-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .admin-thumb-empty {
+            width: 50px;
+            height: 50px;
+            background: #2a2a3a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .admin-item h4 {
+            color: white;
+            margin: 0;
+            font-size: 15px;
+        }
+        .admin-item span {
+            color: #f39c12;
+            font-size: 14px;
+        }
+        .delete-btn {
+            background: #e74c3c33;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        .delete-btn:hover {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-header">
+    <h1>⚙️ Админ-панель</h1>
+    <p>Управление блюдами | <a href="index.html">← Перейти в меню</a></p>
+</div>
+
+<!-- Форма добавления блюда -->
+<div class="admin-form">
+    <h2>➕ Добавить блюдо</h2>
+
+    <div class="form-group">
+        <label>Название блюда *</label>
+        <input type="text" id="dish-name" placeholder="Например: Стейк Рибай">
+    </div>
+
+    <div class="form-group">
+        <label>Описание</label>
+        <textarea id="dish-desc" placeholder="Сочный стейк из мраморной говядины..."></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Цена (₸) *</label>
+        <input type="number" id="dish-price" placeholder="4500">
+    </div>
+
+    <div class="form-group">
+        <label>Категория</label>
+        <select id="dish-category">
+            <option value="main">🥩 Основные блюда</option>
+            <option value="soup">🍲 Супы</option>
+            <option value="salad">🥗 Салаты</option>
+            <option value="dessert">🍰 Десерты</option>
+            <option value="drink">🥤 Напитки</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Фото блюда</label>
+        <input type="file" id="dish-photo" accept="image/*" style="display:none">
+        <div class="upload-area" id="upload-area">
+            <div class="upload-placeholder" id="upload-placeholder">
+                <div class="upload-icon">📸</div>
+                <p>Нажмите или перетащите фото</p>
+                <small>JPG, PNG, WebP • до 5 МБ</small>
+            </div>
+            <div class="upload-preview" id="upload-preview">
+                <img id="preview-img" src="" alt="Preview">
+                <div>
+                    <p style="color:#4CAF50; margin:0;">✅ Фото выбрано</p>
+                    <button class="remove-photo" id="remove-photo">✕ Убрать</button>
+                </div>
+            </div>
+        </div>
+        <div class="upload-progress" id="upload-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <span class="progress-text" id="progress-text">0%</span>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Ссылка на 3D модель (необязательно)</label>
+        <input type="text" id="dish-model" placeholder="https://sketchfab.com/models/...">
+    </div>
+
+    <button class="add-btn" id="add-dish">🍽️ Добавить блюдо</button>
+</div>
+
+<!-- Список блюд -->
+<div class="dishes-section">
+    <h2>📋 Текущее меню</h2>
+    <div id="dishes-list">
+        <p style="text-align:center; color:#888;">Загрузка...</p>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+    // Firebase конфиг
+    const firebaseConfig = {
+        apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhjCTh0gekSgcs",
+        authDomain: "ar-menu-resto.firebaseapp.com",
+        databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "ar-menu-resto",
+        storageBucket: "ar-menu-resto.firebasestorage.app",
+        messagingSenderId: "191825847434",
+        appId: "1:191825847434:web:3ac9c25c7108e363c73973"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // ⚡ ImgBB API Key
+    const IMGBB_API_KEY = 'ce01505f7607ce0c0bc2b13da86447cb';
+
+    // Элементы
+    const dishName = document.getElementById('dish-name');
+    const dishDesc = document.getElementById('dish-desc');
+    const dishPrice = document.getElementById('dish-price');
+    const dishCategory = document.getElementById('dish-category');
+    const dishPhoto = document.getElementById('dish-photo');
+    const dishModel = document.getElementById('dish-model');
+    const addBtn = document.getElementById('add-dish');
+    const dishesList = document.getElementById('dishes-list');
+    const uploadArea = document.getElementById('upload-area');
+    const uploadPlaceholder = document.getElementById('upload-placeholder');
+    const uploadPreview = document.getElementById('upload-preview');
+    const previewImg = document.getElementById('preview-img');
+    const removePhoto = document.getElementById('remove-photo');
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    let selectedFile = null;
+
+    // === ЗАГРУЗКА ФОТО ===
+    uploadArea.addEventListener('click', (e) => {
+        if (e.target.id !== 'remove-photo') {
+            dishPhoto.click();
+        }
+    });
+
+    // Drag & Drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleFile(file);
+        } else {
+            alert('⚠️ Загрузите изображение (JPG, PNG, WebP)');
+        }
+    });
+
+    dishPhoto.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    function handleFile(file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('⚠️ Файл слишком большой! Максимум 5 МБ');
+            return;
+        }
+        selectedFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            uploadPlaceholder.style.display = 'none';
+            uploadPreview.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removePhoto.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedFile = null;
+        dishPhoto.value = '';
+        previewImg.src = '';
+        uploadPreview.style.display = 'none';
+        uploadPlaceholder.style.display = 'flex';
+    });
+
+    // Загрузка на ImgBB
+    async function uploadToImgBB(file) {
+        uploadProgress.style.display = 'flex';
+        progressFill.style.width = '30%';
+        progressText.textContent = '30%';
+
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('key', IMGBB_API_KEY);
+
+        progressFill.style.width = '60%';
+        progressText.textContent = '60%';
+
+        try {
+            const response = await fetch('https://api.imgbb.com/1/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            progressFill.style.width = '100%';
+            progressText.textContent = '100%';
+
+            if (data.success) {
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                    progressFill.style.width = '0%';
+                }, 500);
+                return data.data.display_url;
+            } else {
+                throw new Error('Ошибка загрузки изображения');
+            }
+        } catch (error) {
+            uploadProgress.style.display = 'none';
+            progressFill.style.width = '0%';
+            throw error;
+        }
+    }
+
+    // === ДОБАВЛЕНИЕ БЛЮДА ===
+    addBtn.addEventListener('click', async () => {
+        const name = dishName.value.trim();
+        const price = dishPrice.value.trim();
+
+        if (!name || !price) {
+            alert('⚠️ Заполните название и цену!');
+            return;
+        }
+
+        addBtn.disabled = true;
+        addBtn.textContent = '⏳ Загрузка...';
+
+        try {
+            let imageUrl = '';
+
+            if (selectedFile) {
+                imageUrl = await uploadToImgBB(selectedFile);
+            }
+
+            const newDish = {
+                name: name,
+                description: dishDesc.value.trim(),
+                price: Number(price),
+                category: dishCategory.value,
+                imageUrl: imageUrl,
+                modelUrl: dishModel.value.trim(),
+                createdAt: Date.now()
+            };
+
+            await db.ref('menu').push(newDish);
+
+            alert('✅ Блюдо добавлено!');
+
+            // Очистка формы
+            dishName.value = '';
+            dishDesc.value = '';
+            dishPrice.value = '';
+            dishModel.value = '';
+            selectedFile = null;
+            dishPhoto.value = '';
+            previewImg.src = '';
+            uploadPreview.style.display = 'none';
+            uploadPlaceholder.style.display = 'flex';
+
+        } catch (error) {
+            alert('❌ Ошибка: ' + error.message);
+        }
+
+        addBtn.disabled = false;
+        addBtn.textContent = '🍽️ Добавить блюдо';
+    });
+
+    // === СПИСОК БЛЮД ===
+    db.ref('menu').on('value', (snapshot) => {
+        const data = snapshot.val();
+        dishesList.innerHTML = '';
+
+        if (!data) {
+            dishesList.innerHTML = '<p style="text-align:center; color:#888;">Меню пока пустое</p>';
+            return;
+        }
+
+        Object.keys(data).forEach(key => {
+            const item = data[key];
+            const div = document.createElement('div');
+            div.className = 'admin-item';
+            div.innerHTML = `
+                <div class="admin-item-info">
+                    ${item.imageUrl ? `<img src="${item.imageUrl}" class="admin-thumb" alt="${item.name}">` : '<div class="admin-thumb-empty">📷</div>'}
+                    <div>
+                        <h4>${item.name}</h4>
+                        <span>${item.price} ₸</span>
+                    </div>
+                </div>
+                <button class="delete-btn" data-id="${key}">🗑️</button>
+            `;
+
+            div.querySelector('.delete-btn').addEventListener('click', () => {
+                if (confirm('Удалить "' + item.name + '"?')) {
+                    db.ref('menu/' + key).remove();
+                }
+            });
+
+            dishesList.appendChild(div);
+        });
+    });
+</script>
+
+</body>
+</html>

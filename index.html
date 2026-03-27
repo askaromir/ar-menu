@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель | AR Меню</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="admin-header">
+    <h1>⚙️ Админ-панель</h1>
+    <p>Управление блюдами | <a href="index.html">← Перейти в меню</a></p>
+</div>
+
+<!-- Форма добавления блюда -->
+<div class="admin-form">
+    <h2>➕ Добавить блюдо</h2>
+
+    <div class="form-group">
+        <label>Название блюда *</label>
+        <input type="text" id="dish-name" placeholder="Например: Стейк Рибай">
+    </div>
+
+    <div class="form-group">
+        <label>Описание</label>
+        <textarea id="dish-desc" placeholder="Сочный стейк из мраморной говядины..."></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Цена (₸) *</label>
+        <input type="number" id="dish-price" placeholder="4500">
+    </div>
+
+    <div class="form-group">
+        <label>Категория</label>
+        <select id="dish-category">
+            <option value="main">🥩 Основные блюда</option>
+            <option value="soup">🍲 Супы</option>
+            <option value="salad">🥗 Салаты</option>
+            <option value="dessert">🍰 Десерты</option>
+            <option value="drink">🥤 Напитки</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Ссылка на изображение</label>
+        <input type="url" id="dish-image" placeholder="https://example.com/photo.jpg">
+    </div>
+
+    <div class="form-group">
+        <label>Ссылка на 3D модель (.glb)</label>
+        <input type="url" id="dish-model" placeholder="https://example.com/model.glb">
+    </div>
+
+    <button class="submit-btn" id="add-dish">🍽️ Добавить блюдо</button>
+</div>
+
+<!-- Список существующих блюд -->
+<div class="admin-list">
+    <h2>📋 Текущее меню</h2>
+    <div id="dishes-list">
+        <p class="loading">⏳ Загрузка...</p>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+    // Firebase конфиг
+    const firebaseConfig = {
+        apiKey: "AIzaSyBTD_YJSyUhJIIZPP2ydmhjCTh0gekSgcs",
+        authDomain: "ar-menu-resto.firebaseapp.com",
+        databaseURL: "https://ar-menu-resto-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "ar-menu-resto",
+        storageBucket: "ar-menu-resto.firebasestorage.app",
+        messagingSenderId: "191825847434",
+        appId: "1:191825847434:web:3ac9c25c7108e363c73973",
+        measurementId: "G-RFVSR4EPWP"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Элементы формы
+    const dishName = document.getElementById('dish-name');
+    const dishDesc = document.getElementById('dish-desc');
+    const dishPrice = document.getElementById('dish-price');
+    const dishCategory = document.getElementById('dish-category');
+    const dishImage = document.getElementById('dish-image');
+    const dishModel = document.getElementById('dish-model');
+    const addBtn = document.getElementById('add-dish');
+    const dishesList = document.getElementById('dishes-list');
+
+    // Добавление блюда
+    addBtn.addEventListener('click', () => {
+        const name = dishName.value.trim();
+        const price = dishPrice.value.trim();
+
+        if (!name || !price) {
+            alert('⚠️ Заполните название и цену!');
+            return;
+        }
+
+        const newDish = {
+            name: name,
+            description: dishDesc.value.trim(),
+            price: Number(price),
+            category: dishCategory.value,
+            imageUrl: dishImage.value.trim(),
+            modelUrl: dishModel.value.trim(),
+            createdAt: Date.now()
+        };
+
+        db.ref('menu').push(newDish)
+            .then(() => {
+                alert('✅ Блюдо добавлено!');
+                // Очистка формы
+                dishName.value = '';
+                dishDesc.value = '';
+                dishPrice.value = '';
+                dishImage.value = '';
+                dishModel.value = '';
+            })
+            .catch((error) => {
+                alert('❌ Ошибка: ' + error.message);
+            });
+    });
+
+    // Загрузка и отображение списка блюд
+    db.ref('menu').on('value', (snapshot) => {
+        const data = snapshot.val();
+        dishesList.innerHTML = '';
+
+        if (!data) {
+            dishesList.innerHTML = '<p class="loading">Меню пока пустое</p>';
+            return;
+        }
+
+        Object.keys(data).forEach(key => {
+            const item = data[key];
+            const div = document.createElement('div');
+            div.className = 'admin-item';
+            div.innerHTML = `
+                <div class="admin-item-info">
+                    <h4>${item.name}</h4>
+                    <span>${item.price} ₸</span>
+                </div>
+                <button class="delete-btn" data-id="${key}">🗑️ Удалить</button>
+            `;
+
+            // Кнопка удаления
+            div.querySelector('.delete-btn').addEventListener('click', () => {
+                if (confirm(`Удалить "${item.name}"?`)) {
+                    db.ref('menu/' + key).remove()
+                        .then(() => alert('✅ Удалено!'))
+                        .catch((err) => alert('❌ Ошибка: ' + err.message));
+                }
+            });
+
+            dishesList.appendChild(div);
+        });
+    });
+</script>
+
+</body>
+</html>
